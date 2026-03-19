@@ -11,7 +11,7 @@ interface QuickPostFormProps {
 }
 
 export default function QuickPostForm({ communityId, communityName, onClose }: QuickPostFormProps) {
-  const { isLoggedIn, account } = useAuth();
+  const { account } = useAuth();
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');

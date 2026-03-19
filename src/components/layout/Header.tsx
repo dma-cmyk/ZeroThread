@@ -1,7 +1,7 @@
 // ヘッダーコンポーネント
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, Search, LogOut, User, Plus, Zap, X } from 'lucide-react';
+import { Menu, Search, LogOut, User, Zap, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
