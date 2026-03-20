@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KeyRound, UserPlus, LogIn, Shield, Eye, EyeOff, Import, AlertCircle, Bookmark } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { getStoredAccountIds, getCachedAccounts } from '../../lib/auth';
 
 export default function AuthPage() {
   const [mode, setMode] = useState<'login' | 'register' | 'import'>('login');
@@ -20,11 +21,8 @@ export default function AuthPage() {
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // lib/auth.ts から取得
-    import('../../lib/auth').then(auth => {
-      setSavedAccounts(auth.getStoredAccountIds());
-      setAccountMetadata(auth.getCachedAccounts());
-    });
+    setSavedAccounts(getStoredAccountIds());
+    setAccountMetadata(getCachedAccounts());
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {

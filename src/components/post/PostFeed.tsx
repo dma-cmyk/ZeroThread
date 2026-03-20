@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Flame, TrendingUp, Clock, Loader2 } from 'lucide-react';
 import PostCard from './PostCard';
 import { useAuth } from '../../contexts/AuthContext';
-import { subscribeToPostsRealtime } from '../../lib/firestore';
+import { subscribeToPostsRealtime, getUserCommunities } from '../../lib/firestore';
 import type { Post, FeedSort } from '../../types';
 
 interface PostFeedProps {
@@ -31,9 +31,7 @@ export default function PostFeed({
 
   useEffect(() => {
     if (onlyJoined && account) {
-      import('../../lib/firestore').then(lib => {
-        lib.getUserCommunities(account.id).then(setJoinedCommunities);
-      });
+      getUserCommunities(account.id).then(setJoinedCommunities);
     } else {
       setJoinedCommunities([]);
     }
