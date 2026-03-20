@@ -29,7 +29,7 @@ export default function CreateCommunity() {
     if (!name.trim()) { setError('コミュニティ名を入力してください'); return; }
     if (!slug.trim()) { setError('IDを入力してください'); return; }
 
-    const communityId = `c/${slug}`;
+    const communityId = slug;
     setLoading(true);
 
     try {
