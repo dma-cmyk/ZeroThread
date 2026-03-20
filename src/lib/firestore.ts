@@ -7,6 +7,7 @@ import {
   increment, type Unsubscribe
 } from 'firebase/firestore';
 import { db, isDemoMode } from './firebase';
+export { isDemoMode };
 import type { Account, Community, Post, Comment, UserVote, AccountCommunity, FeedSort } from '../types';
 
 // 匿名ユーザー用の識別子を取得または生成
@@ -111,6 +112,7 @@ export async function createCommunity(community: Omit<Community, 'memberCount'>)
       joinedAt: Date.now(),
     });
     setLocalData('account_communities', memberships);
+    window.dispatchEvent(new CustomEvent('zt_membership_changed'));
     return;
   }
   const ref = doc(db, 'public', 'data', 'communities', community.id);
@@ -129,6 +131,7 @@ export async function createCommunity(community: Omit<Community, 'memberCount'>)
     community: community.id,
     joinedAt: Date.now(),
   });
+  window.dispatchEvent(new CustomEvent('zt_membership_changed'));
 }
 
 /** コミュニティ一覧を取得 */
@@ -141,6 +144,60 @@ export async function getCommunities(): Promise<Community[]> {
   return snap.docs.map(d => d.data() as Community);
 }
 
+/** すべてのコミュニティをリアルタイム購読 */
+export function subscribeToCommunitiesRealtime(callback: (communities: Community[]) => void): Unsubscribe {
+  if (isDemoMode) {
+    const handler = () => {
+      callback(getLocalData<Community>('communities'));
+    };
+    window.addEventListener('storage', handler);
+    handler();
+    return () => window.removeEventListener('storage', handler);
+  }
+  const q = query(collection(db, 'public', 'data', 'communities'));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => d.data() as Community));
+  }, (err) => {
+    console.error('コミュニティリスト購読エラー:', err);
+    callback([]);
+  });
+}
+
+/** コミュニティを削除 */
+export async function deleteCommunity(communityId: string): Promise<void> {
+  if (isDemoMode) {
+    const communities = getLocalData<Community>('communities');
+    const filtered = communities.filter(c => c.id !== communityId);
+    setLocalData('communities', filtered);
+
+    // 関連するユーザーの参加情報も削除
+    const memberships = getLocalData<AccountCommunity>('account_communities');
+    const filteredMemberships = memberships.filter(m => m.community !== communityId);
+    setLocalData('account_communities', filteredMemberships);
+
+    const posts = getLocalData<Post>('posts');
+    const comments = getLocalData<Comment>('comments');
+    const validCommunityIds = new Set(filtered.map(c => c.id));
+    
+    // 削除対象のコミュニティの投稿を削除
+    const filteredPosts = posts.filter(p => p.community !== communityId && validCommunityIds.has(p.community));
+    setLocalData('posts', filteredPosts);
+    
+    const remainingPostIds = new Set(filteredPosts.map(p => p.id));
+    const filteredComments = comments.filter(c => remainingPostIds.has(c.postId));
+    setLocalData('comments', filteredComments);
+
+    window.dispatchEvent(new CustomEvent('zt_membership_changed'));
+    // storageイベントを手動で発火させて他のタブにも通知
+    window.dispatchEvent(new Event('storage'));
+    return;
+  }
+  const ref = doc(db, 'public', 'data', 'communities', communityId);
+  await deleteDoc(ref);
+  // メンバーシップ変更を通知（削除されたら全員のリストから消えるはずだが、特に自分のリスト用）
+  window.dispatchEvent(new CustomEvent('zt_membership_changed'));
+}
+
 /** コミュニティを取得 */
 export async function getCommunity(communityId: string): Promise<Community | null> {
   if (isDemoMode) {
@@ -150,6 +207,26 @@ export async function getCommunity(communityId: string): Promise<Community | nul
   const ref = doc(db, 'public', 'data', 'communities', communityId);
   const snap = await getDoc(ref);
   return snap.exists() ? (snap.data() as Community) : null;
+}
+
+/** コミュニティをリアルタイム購読 */
+export function subscribeToCommunityRealtime(communityId: string, callback: (community: Community | null) => void): Unsubscribe {
+  if (isDemoMode) {
+    const handler = () => {
+      const communities = getLocalData<Community>('communities');
+      callback(communities.find(c => c.id === communityId) || null);
+    };
+    window.addEventListener('storage', handler);
+    handler();
+    return () => window.removeEventListener('storage', handler);
+  }
+  const ref = doc(db, 'public', 'data', 'communities', communityId);
+  return onSnapshot(ref, (snap) => {
+    callback(snap.exists() ? (snap.data() as Community) : null);
+  }, (err) => {
+    console.error('コミュニティ購読エラー:', err);
+    callback(null);
+  });
 }
 
 /** コミュニティに参加 */
@@ -619,6 +696,12 @@ export function subscribeToPostsRealtime(
   if (isDemoMode) {
     const interval = setInterval(() => {
       let posts = getLocalData<Post>('posts');
+      const communities = getLocalData<Community>('communities');
+      const validCommunityIds = new Set(communities.map(c => c.id));
+      
+      // 実在するコミュニティの投稿のみを表示
+      posts = posts.filter(p => validCommunityIds.has(p.community));
+
       if (communityFilter) {
         if (Array.isArray(communityFilter)) {
           posts = posts.filter(p => communityFilter.includes(p.community));

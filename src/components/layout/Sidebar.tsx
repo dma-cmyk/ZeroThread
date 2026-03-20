@@ -1,9 +1,9 @@
 // サイドバーコンポーネント
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, TrendingUp, Clock, Plus, Hash, ChevronDown, ChevronRight } from 'lucide-react';
+import { Home, TrendingUp, Clock, Plus, Hash, ChevronDown, ChevronRight, RefreshCw, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getCommunities, getUserCommunities } from '../../lib/firestore';
+import { getCommunities, getUserCommunities, subscribeToCommunitiesRealtime } from '../../lib/firestore';
 import type { Community } from '../../types';
 
 interface SidebarProps {
@@ -17,26 +17,36 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [userCommunities, setUserCommunities] = useState<string[]>([]);
   const [showAllCommunities, setShowAllCommunities] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState(false);
 
   useEffect(() => {
-    loadCommunities();
+    // コミュニティリストをリアルタイム購読
+    const unsubscribe = subscribeToCommunitiesRealtime((allCommunities) => {
+      setCommunities(allCommunities);
+    });
 
-    // イベントリスナー登録
-    const handleMembershipChange = () => loadCommunities();
-    window.addEventListener('zt_membership_changed', handleMembershipChange);
-    return () => window.removeEventListener('zt_membership_changed', handleMembershipChange);
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn && account) {
+      loadUserMembership();
+      // イベントリスナー登録
+      const handleMembershipChange = () => loadUserMembership();
+      window.addEventListener('zt_membership_changed', handleMembershipChange);
+      return () => window.removeEventListener('zt_membership_changed', handleMembershipChange);
+    } else {
+      setUserCommunities([]);
+    }
   }, [isLoggedIn, account]);
 
-  async function loadCommunities() {
+  async function loadUserMembership() {
+    if (!account) return;
     try {
-      const allCommunities = await getCommunities();
-      setCommunities(allCommunities);
-      if (isLoggedIn && account) {
-        const joined = await getUserCommunities(account.id);
-        setUserCommunities(joined);
-      }
+      const joined = await getUserCommunities(account.id);
+      setUserCommunities(joined);
     } catch (err) {
-      console.error('コミュニティ取得エラー:', err);
+      console.error('メンバーシップ取得エラー:', err);
     }
   }
 
@@ -49,8 +59,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         : 'text-gray-400 hover:bg-white/5 hover:text-white'
     }`;
 
-  const joinedCommunities = communities.filter(c => userCommunities.includes(c.id));
-  const otherCommunities = communities.filter(c => !userCommunities.includes(c.id));
+  const joinedCommunities = (communities || []).filter(c => (userCommunities || []).includes(c.id));
+  const otherCommunities = (communities || []).filter(c => !(userCommunities || []).includes(c.id));
 
   return (
     <>
@@ -122,7 +132,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </button>
             {showAllCommunities && (
               <div className="mt-1 space-y-0.5">
-                {(isLoggedIn ? otherCommunities : communities).map(c => (
+                {((isLoggedIn ? otherCommunities : communities) || []).map(c => (
                   <Link
                     key={c.id}
                     to={`/community/${encodeURIComponent(c.id)}`}
@@ -155,6 +165,57 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               コミュニティを作成
             </Link>
           )}
+
+          {/* 緊急リセットボタン (2段階) */}
+          <div className="mt-4 px-2">
+            {!resetConfirm ? (
+              <button
+                onClick={() => setResetConfirm(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-[10px] text-gray-600 transition-all hover:text-red-500 hover:bg-red-500/5 group"
+                title="初期化の準備"
+              >
+                <RefreshCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
+                アプリを初期化
+              </button>
+            ) : (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-2 animate-in fade-in zoom-in duration-200">
+                <p className="mb-2 flex items-center gap-1 text-center text-[9px] font-bold text-red-500">
+                  <AlertTriangle size={10} />
+                  データを全消去しますか？
+                </p>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => {
+                      try {
+                        console.log('強制的初期化を実行中...');
+                        const keys = [];
+                        for (let i = 0; i < localStorage.length; i++) {
+                          const key = localStorage.key(i);
+                          if (key?.startsWith('zt_')) keys.push(key);
+                        }
+                        keys.forEach(k => localStorage.removeItem(k));
+                        localStorage.removeItem('zt_session');
+                        console.log('リセット成功');
+                        window.location.href = '/';
+                      } catch (err) {
+                        console.error('リセット失敗:', err);
+                        setResetConfirm(false);
+                      }
+                    }}
+                    className="flex-1 rounded-lg bg-red-600 py-1.5 text-[10px] font-bold text-white hover:bg-red-700 transition-colors"
+                  >
+                    はい
+                  </button>
+                  <button
+                    onClick={() => setResetConfirm(false)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-gray-400 hover:bg-white/20 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
     </>

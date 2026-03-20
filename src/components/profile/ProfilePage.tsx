@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { User, Copy, Check, Save, Shield, Code, Terminal, ArrowRightLeft, RefreshCw, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getEncryptedKey, changeAccountPassword } from '../../lib/auth';
-import { updateAccountName } from '../../lib/firestore';
+import { updateAccountName, isDemoMode } from '../../lib/firestore';
 
 export default function ProfilePage() {
   const { isLoggedIn, account, refreshSession } = useAuth();
@@ -160,6 +160,22 @@ export default function ProfilePage() {
     if (confirm(`キー "${key}" を削除しますか？\nこの操作は元に戻せません。`)) {
       localStorage.removeItem(key);
       refreshLsData();
+    }
+  };
+
+  const handleHardReset = () => {
+    if (confirm('【警告】すべてのアプリデータ（アカウント、検索履歴、コミュニティ、投稿など）を完全に削除して初期化しますか？\nこの操作は取り消せません。')) {
+      // zt_ で始まるすべてのキーを削除
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('zt_')) keys.push(key);
+      }
+      keys.forEach(k => localStorage.removeItem(k));
+      
+      alert('データを初期化しました。ログアウトします。');
+      localStorage.removeItem('zt_session');
+      window.location.href = '/';
     }
   };
 
@@ -481,6 +497,24 @@ export default function ProfilePage() {
                   {Object.keys(lsData).length === 0 && (
                     <p className="text-center py-4 text-xs text-gray-600 italic">データがありません</p>
                   )}
+                </div>
+
+                {/* Hard Reset */}
+                <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/5 p-6">
+                  <h4 className="mb-2 text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                    <Trash2 size={14} />
+                    危険な操作
+                  </h4>
+                  <p className="mb-4 text-[11px] text-gray-500 leading-relaxed">
+                    デモモードのすべてのローカルデータを削除して工場出荷状態に戻します。<br/>
+                    本番環境（Firebase）のデータには影響しません。
+                  </p>
+                  <button
+                    onClick={handleHardReset}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600/10 border border-red-500/30 py-3 text-xs font-bold text-red-500 hover:bg-red-600 hover:text-white transition-all"
+                  >
+                    アプリデータを完全に初期化する
+                  </button>
                 </div>
               </div>
             </div>

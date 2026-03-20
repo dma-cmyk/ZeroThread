@@ -11,7 +11,8 @@ import {
   banUser, unbanUser,
   banPost, unbanPost,
   banComment, unbanComment,
-  updateCommunitySettings
+  updateCommunitySettings,
+  isDemoMode
 } from '../../lib/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Community, Post, Comment } from '../../types';
@@ -55,13 +56,19 @@ export default function ModerationPage() {
         .sort((a: Post, b: Post) => b.timestamp - a.timestamp);
       setPosts(allPosts.length > 0 ? allPosts : p);
 
-      const allComments = (JSON.parse(localStorage.getItem('zt_comments') || '[]') as Comment[])
-        .filter((comment: Comment) => {
-          const postIds = new Set((allPosts.length > 0 ? allPosts : p).map((pp: Post) => pp.id));
-          return postIds.has(comment.postId);
-        })
-        .sort((a: Comment, b: Comment) => b.timestamp - a.timestamp);
-      setComments(allComments);
+      if (isDemoMode) {
+        const allComments = (JSON.parse(localStorage.getItem('zt_comments') || '[]') as Comment[])
+          .filter((comment: Comment) => {
+            const postIds = new Set((allPosts.length > 0 ? allPosts : p).map((pp: Post) => pp.id));
+            return postIds.has(comment.postId);
+          })
+          .sort((a: Comment, b: Comment) => b.timestamp - a.timestamp);
+        setComments(allComments);
+      } else {
+        // Firebase モード: 現在の投稿に関連するコメントを簡易的に取得
+        // 本来はコレクション全体をクエリするのが望ましいが、一旦最新投稿に関連するものに限定
+        setComments([]); // FIXME: 本番環境でのモデレーション用コメント一覧取得の実装
+      }
     } catch (err) {
       console.error('モデレーションデータ取得エラー:', err);
     } finally {

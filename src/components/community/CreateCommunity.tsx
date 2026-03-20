@@ -17,7 +17,7 @@ export default function CreateCommunity() {
   function handleNameChange(value: string) {
     setName(value);
     // 自動スラグ生成（英数字とアンダースコアのみ）
-    const autoSlug = value.toLowerCase().replace(/[^a-z0-9_\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/g, '_').replace(/_+/g, '_');
+    const autoSlug = value.replace(/\//g, '_');
     setSlug(autoSlug);
   }
 
@@ -92,7 +92,7 @@ export default function CreateCommunity() {
             <input
               type="text"
               value={slug}
-              onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              onChange={e => setSlug(e.target.value.replace(/\//g, ''))}
               placeholder="community_id"
               className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition-all focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 font-mono"
               data-testid="input-community-id"

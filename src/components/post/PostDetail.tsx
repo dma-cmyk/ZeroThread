@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MessageSquare, Clock, AlertTriangle, ChevronLeft, UserX, Ban, Loader2 } from 'lucide-react';
-import { getPost, subscribeToCommentsRealtime, deletePost, deleteComment, getCommunity, banUser, banPost, banComment } from '../../lib/firestore';
+import { getPost, subscribeToCommentsRealtime, deletePost, deleteComment, getCommunity, subscribeToCommunityRealtime, banUser, banPost, unbanPost, banComment, unbanComment } from '../../lib/firestore';
 import type { Post, Comment, Community } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import VoteButton from '../common/VoteButton';
@@ -35,24 +35,27 @@ export default function PostDetail() {
 
   useEffect(() => {
     if (!postId) return;
-    loadPost();
-  }, [postId]);
-
-  async function loadPost() {
+    
     setLoading(true);
-    try {
-      const p = await getPost(postId!);
+    let unsubscribeCommunity: (() => void) | undefined;
+
+    getPost(postId).then(p => {
       if (p) {
         setPost(p);
-        const c = await getCommunity(p.community);
-        setCommunity(c);
+        unsubscribeCommunity = subscribeToCommunityRealtime(p.community, (c) => {
+          setCommunity(c);
+        });
       }
-    } catch (err) {
-      console.error('投稿取得エラー:', err);
-    } finally {
       setLoading(false);
-    }
-  }
+    }).catch(err => {
+      console.error('投稿取得エラー:', err);
+      setLoading(false);
+    });
+
+    return () => {
+      if (unsubscribeCommunity) unsubscribeCommunity();
+    };
+  }, [postId]);
 
   useEffect(() => {
     if (!postId) return;
@@ -124,13 +127,19 @@ export default function PostDetail() {
   }
 
   async function handleToggleCommentHide(commentId: string) {
-    if (!community || !confirm('このコメントを非表示にしますか？')) return;
+    if (!community) return;
+    const isBanned = community.bannedCommentIds?.includes(commentId);
+    if (!isBanned && !confirm('このコメントを非表示にしますか？')) return;
     try {
-      await banComment(community.id, commentId);
+      if (isBanned) {
+        await unbanComment(community.id, commentId);
+      } else {
+        await banComment(community.id, commentId);
+      }
       const updated = await getCommunity(community.id);
       setCommunity(updated);
     } catch (err) {
-      console.error('コメント非表示エラー:', err);
+      console.error('コメント非表示切替エラー:', err);
     }
   }
 

@@ -84,8 +84,16 @@ export default function CommentItem({
     return (
       <div className={`mt-4 border-l-2 border-white/5 pl-4 opacity-50`}>
         <p className="text-xs italic text-gray-500">{placeholder}</p>
-        <div className="mt-2 text-[10px] text-gray-600">
+        <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-600">
           {timeAgo(comment.timestamp)}
+          {isOwner && isCommentBanned && (
+            <button
+              onClick={() => onToggleHide?.(comment.id)}
+              className="ml-2 font-bold text-emerald-500 hover:text-emerald-400"
+            >
+              表示に戻す
+            </button>
+          )}
         </div>
         {hasChildren && (
           <div className="mt-2 space-y-4">

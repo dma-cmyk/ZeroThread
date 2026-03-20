@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Users, Shield, Loader2, UserPlus, Ban, Plus, LogOut } from 'lucide-react';
-import { getCommunity, joinCommunity, leaveCommunity, getUserCommunities, banUser } from '../../lib/firestore';
+import { getCommunity, joinCommunity, leaveCommunity, getUserCommunities, banUser, subscribeToCommunityRealtime, deleteCommunity } from '../../lib/firestore';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import PostFeed from '../post/PostFeed';
 import QuickPostForm from '../post/QuickPostForm';
 import type { Community } from '../../types';
@@ -19,34 +20,36 @@ export default function CommunityPage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false); // NEW
   const [banTarget, setBanTarget] = useState('');
   const [isQuickPostOpen, setIsQuickPostOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!decodedId) return;
-    loadCommunity();
-  }, [decodedId, isLoggedIn]);
-
-  async function loadCommunity(silent = false) {
-    if (!silent) setLoading(true);
-    try {
-      const c = await getCommunity(decodedId);
+    
+    setLoading(true);
+    const unsubscribe = subscribeToCommunityRealtime(decodedId, (c) => {
       setCommunity(c);
-      if (isLoggedIn && account) {
-        const joined = await getUserCommunities(account.id);
-        setIsMember(joined.includes(decodedId));
-      }
-    } catch (err) {
-      console.error('コミュニティ取得エラー:', err);
-    } finally {
       setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [decodedId]);
+
+  useEffect(() => {
+    if (isLoggedIn && account && decodedId) {
+      getUserCommunities(account.id).then(joined => {
+        setIsMember(joined.includes(decodedId));
+      });
+    } else {
+      setIsMember(false);
     }
-  }
+  }, [decodedId, isLoggedIn, account]);
 
   async function handleJoin() {
     if (!isLoggedIn || !account || !decodedId) return;
     try {
       await joinCommunity(account.id, decodedId);
       setIsMember(true);
-      loadCommunity(true); // サイレント更新
       window.dispatchEvent(new CustomEvent('zt_membership_changed'));
     } catch (err) {
       console.error('コミュニティ参加エラー:', err);
@@ -59,7 +62,6 @@ export default function CommunityPage() {
       await banUser(community.id, banTarget.trim());
       setShowBanModal(false);
       setBanTarget('');
-      loadCommunity();
     } catch (err) {
       console.error('BAN エラー:', err);
     }
@@ -71,10 +73,23 @@ export default function CommunityPage() {
       await leaveCommunity(account.id, decodedId);
       setIsMember(false);
       setShowLeaveModal(false);
-      loadCommunity(true); // サイレント更新
       window.dispatchEvent(new CustomEvent('zt_membership_changed'));
     } catch (err) {
       console.error('コミュニティ脱退エラー:', err);
+    }
+  }
+
+  async function handleDelete() {
+    if (!isOwner || !decodedId) return;
+    if (!window.confirm(`本当にコミュニティ「${community?.name}」を削除しますか？この操作は取り消せません。`)) return;
+    
+    try {
+      setLoading(true);
+      await deleteCommunity(decodedId);
+      navigate('/');
+    } catch (err) {
+      console.error('コミュニティ削除エラー:', err);
+      setLoading(false);
     }
   }
 
@@ -155,6 +170,15 @@ export default function CommunityPage() {
                 data-testid="btn-leave-community"
               >
                 脱退
+              </button>
+            )}
+            {isOwner && (
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-1.5 text-sm font-medium text-red-500 transition-all hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20"
+                data-testid="btn-delete-community"
+              >
+                削除
               </button>
             )}
           </div>
