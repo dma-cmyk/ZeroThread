@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, TrendingUp, Clock, Plus, Hash, ChevronDown, ChevronRight, RefreshCw, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getCommunities, getUserCommunities, subscribeToCommunitiesRealtime } from '../../lib/firestore';
+import { getUserCommunities, subscribeToCommunitiesRealtime } from '../../lib/firestore';
 import type { Community } from '../../types';
 
 interface SidebarProps {

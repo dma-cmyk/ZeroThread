@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Users, Shield, Loader2, UserPlus, Ban, Plus, LogOut } from 'lucide-react';
-import { getCommunity, joinCommunity, leaveCommunity, getUserCommunities, banUser, subscribeToCommunityRealtime, deleteCommunity } from '../../lib/firestore';
+import { joinCommunity, leaveCommunity, getUserCommunities, banUser, deleteCommunity, subscribeToCommunityRealtime } from '../../lib/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import PostFeed from '../post/PostFeed';
@@ -20,14 +20,14 @@ export default function CommunityPage() {
   const [showLeaveModal, setShowLeaveModal] = useState(false); // NEW
   const [banTarget, setBanTarget] = useState('');
   const [isQuickPostOpen, setIsQuickPostOpen] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!decodedId) return;
     
     setLoading(true);
-    const unsubscribe = subscribeToCommunityRealtime(decodedId, (c) => {
+    const unsubscribe = subscribeToCommunityRealtime(decodedId, (c: Community | null) => {
       setCommunity(c);
       setLoading(false);
     });

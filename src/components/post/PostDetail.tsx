@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MessageSquare, Clock, AlertTriangle, ChevronLeft, UserX, Ban, Loader2 } from 'lucide-react';
-import { getPost, subscribeToCommentsRealtime, deletePost, deleteComment, getCommunity, subscribeToCommunityRealtime, banUser, banPost, unbanPost, banComment, unbanComment } from '../../lib/firestore';
+import { getPost, subscribeToCommentsRealtime, deletePost, deleteComment, getCommunity, subscribeToCommunityRealtime, banUser, banPost, banComment, unbanComment } from '../../lib/firestore';
 import type { Post, Comment, Community } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import VoteButton from '../common/VoteButton';

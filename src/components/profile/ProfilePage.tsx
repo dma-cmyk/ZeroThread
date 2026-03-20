@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { User, Copy, Check, Save, Shield, Code, Terminal, ArrowRightLeft, RefreshCw, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getEncryptedKey, changeAccountPassword } from '../../lib/auth';
-import { updateAccountName, isDemoMode } from '../../lib/firestore';
+import { updateAccountName } from '../../lib/firestore';
 
 export default function ProfilePage() {
   const { isLoggedIn, account, refreshSession } = useAuth();
