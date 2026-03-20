@@ -17,6 +17,8 @@ const firebaseConfig = {
 // デモモード判定（Firebase未設定時はlocalStorageでモック動作）
 export const isDemoMode = !import.meta.env.VITE_FIREBASE_API_KEY;
 
+console.log('ZeroThread Mode:', isDemoMode ? 'Demo' : 'Firebase');
+
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
