@@ -51,7 +51,7 @@ export default function PostFeed({
       return;
     }
 
-    const filter = communityId || joinedCommunities;
+    const filter = communityId || (onlyJoined ? joinedCommunities : undefined);
 
     // リアルタイムリスナーを設定
     const unsubscribe = subscribeToPostsRealtime((newPosts) => {

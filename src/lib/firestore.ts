@@ -429,7 +429,9 @@ export async function createComment(comment: Omit<Comment, 'id'>): Promise<strin
   }
 
   const ref = doc(db, 'public', 'data', 'comments', id);
-  await setDoc(ref, fullComment);
+  // Firestore は undefined を受け付けないため、undefined のフィールドを削除
+  const data = JSON.parse(JSON.stringify(fullComment));
+  await setDoc(ref, data);
   await updateDoc(postRef, { commentsCount: increment(1) });
   return id;
 }
